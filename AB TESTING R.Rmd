@@ -1,0 +1,273 @@
+---
+title: "AB TESTING"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#install.packages("tidyverse")
+library(tidyverse)
+```
+
+```{r}
+data1 <- read.csv( file = "/Users/jimenacampos/Documents/cookie_cats.csv", sep = ";")
+
+head(data1, 6)
+```
+```{r}
+checkData <-
+  print("##################### Shape #####################")
+  print(dim(data1))
+  print("##################### Types #####################")
+  print(str(data1))
+  print("##################### Head #####################")
+  head(data1,3)
+  print("##################### Tail #####################")
+  tail(data1,3)
+  print("##################### NA #####################")
+  colSums(is.na(data1))
+```
+```{r}
+sum(duplicated(data1$userid))
+```
+
+```{r}
+glimpse(data1)
+```
+
+```{r}
+# Número de jugadores en cada grupo AB
+
+data1 %>%
+    select(version) %>%
+    group_by(version) %>%
+    tally()
+```
+```{r}
+#Contar el número de jugadores por cada ronda de juego
+
+plot_df <- data1 %>%
+    group_by(sum_gamerounds) %>%
+    summarise(userid_cnt = n())
+
+head(plot_df, 5)
+```
+
+```{r}
+# Cálculo de la retención de 1 día por cada grupo AB            
+data1 %>%
+    select(version, retention_1) %>%
+    group_by(version) %>%
+    summarise(return_pct = sum(retention_1)/n())
+```
+
+```{r}
+# Cálculo de la retención de 7 días por cada grupo AB
+data1 %>%
+    select(version, retention_7) %>%
+    group_by(version) %>%
+    summarise(return_pct = sum(retention_7)/n())
+```
+```{r}
+#install.packages("plotly")
+```
+
+```{r}
+#library(tidyverse)
+glimpse(data1)
+```
+
+```{r}
+prop.table(table(data1$version))*100
+```
+
+```{r}
+colSums(is.na(data1))
+```
+
+```{r}
+library(plotly)
+
+fig <- data1 %>%
+  plot_ly(
+    x = ~version,
+    y = ~sum_gamerounds,
+    split = ~version,
+    type = 'violin',
+    box = list(
+      visible = T
+    ),
+    meanline = list(
+      visible = T
+    )
+  ) 
+
+fig <- fig %>%
+  layout(
+    xaxis = list(
+      title = "Gate"
+    ),
+    yaxis = list(
+      title = "Sum gamerounds",
+      zeroline = F
+    )
+  )
+
+fig
+
+```
+
+```{r}
+cookie_cats_clean <- data1 %>% 
+  filter(sum_gamerounds <= 40000)
+
+library(plotly)
+
+fig2 <- cookie_cats_clean %>%
+  plot_ly(
+    x = ~version,
+    y = ~sum_gamerounds,
+    split = ~version,
+    type = 'violin',
+    box = list(
+      visible = T
+    ),
+    meanline = list(
+      visible = T
+    )
+  ) 
+
+fig2 <- fig2 %>%
+  layout(
+    xaxis = list(
+      title = "Gate"
+    ),
+    yaxis = list(
+      title = "Sum gamerounds",
+      zeroline = F
+    )
+  )
+
+fig2
+```
+
+```{r}
+number_of_games <- cookie_cats_clean %>%
+  count(sum_gamerounds)
+
+head(number_of_games, 6)
+```
+```{r}
+#Hubo 3994 jugadores o el 4,4% del total de jugadores registrados que no jugaron ninguna ronda. Intentaremos ver la distribución de las 100 primeras rondas jugadas por cada usuario.
+```
+
+```{r}
+#install.packages("ggplot2")
+#install.packages("dplyr")
+#install.packages("plotly")
+#install.packages("hrbrthemes")
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(plotly)
+
+p <- number_of_games %>%
+  filter(sum_gamerounds <= 100) %>% 
+  ggplot( aes(x=sum_gamerounds, y=n)) +
+    geom_area(fill="#69b3a2", alpha=0.5) +
+    geom_line(color="#69b3a2") +
+  xlab("Number of rounds")+
+    ylab("Number of Player") +
+  ggtitle("Number of Player Played The First 100 Rounds")
+
+# Turn it interactive with ggplotly
+p <- ggplotly(p)
+```
+
+```{r}
+#A pesar de que el número de personas que jugaban más rondas estaba disminuyendo, podemos ver que había muchos jugadores que jugaban más rondas que el resto. Significa que este jugador está enganchado con el juego.
+```
+
+```{r}
+prop.table(table(cookie_cats_clean$retention_1))*100
+```
+
+```{r}
+#4.5% jugador vuelve después de instalar el juego por un día. El número es menor que la mayoría de los jugadores que decidieron no jugar después de 1 día. También podemos ver el número de retención de 1 día para cada grupo de puertas.
+```
+
+```{r}
+ratio_per_group1 <- cookie_cats_clean %>% 
+  group_by(version, retention_1) %>% 
+  summarize(count =n()) %>% 
+  mutate(percentage = round(count/sum(count)*100,2)) %>% 
+  ungroup() 
+
+ratio_per_group1
+```
+
+```{r}
+#Para ambas puertas, el número de retención de 1 día es similar, alrededor del 44 %. También podemos ver la retención de 7 días. La retención de 7 días es una condición en la que un jugador vuelve a jugar después de 7 días de instalación. Veamos la proporción de todas las puertas.
+```
+
+```{r}
+prop.table(table(data1$retention_7))*100
+```
+
+```{r}
+#Los números de retención durante 7 días después de instalar el juego están bastante lejos. Muchos jugadores por la cantidad de 81% eligen abandonar el juego.
+```
+
+```{r}
+ratio_per_group7 <- data1 %>% 
+  group_by(version, retention_7) %>% 
+  summarize(count =n()) %>% 
+  mutate(percentage = round(count/sum(count)*100,2)) %>% 
+  ungroup() 
+
+ratio_per_group7
+```
+
+```{r}
+#Para ambas puertas en retención de 7 días, el número es similar. 
+```
+
+```{r}
+cookie_cats_clean_30 <- cookie_cats_clean %>%
+  dplyr::filter(version == "gate_30")
+
+cookie_cats_clean_40 <- cookie_cats_clean %>%
+  dplyr::filter(version == "gate_40")
+```
+
+```{r}
+#Hay una diferencia significativa entre la ubicación en la puerta 30 y la puerta 40 y para ver la tasa de retención, debemos esperar 7 días, ya que el jugador no llegará a la puerta 30 por jugar en un día. La recomendación para el negocio es que si queremos mantener la retención más alta, la puerta debe colocarse en el nivel 30 y no moverla al nivel 40.
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
